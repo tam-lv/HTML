@@ -1,0 +1,217 @@
+const BASE_URL = "http://aws-apicore-facing-v-663035098.ap-northeast-1.elb.amazonaws.com/~fujinet01/aws-apicore_httpif/v1_0/suggest/word?";
+
+// Xử lý load data khi input freeword
+$(document).ready(function() {
+  $("#freeword").keyup(function(){
+		$("#info").hide();
+		settingRequestUrl();
+		getSuggestWord();
+  });
+});
+
+// setting リクエストURL khi các trị input của parameter change
+$(document).ready(function() {
+	$("#genre_cnt, #genre_searchtype, #genre_sort, #station_cnt, #station_searchtype, #station_sort, #poi_cnt, #poi_searchtype, #poi_sort").change(function(){
+		settingRequestUrl();
+		getSuggestWord();
+	});
+});
+
+// Xử lý kiểm tra chỉ cho phép input đối với ký tự số 
+$(document).ready(function() {
+	$("#genre_cnt, #station_cnt, #poi_cnt").keydown(function (e) {
+		if ($.inArray(e.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+			(e.keyCode === 65 && (e.ctrlKey === true || e.metaKey === true)) || 
+			(e.keyCode >= 35 && e.keyCode <= 40)) {
+			 return;
+		}
+		if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) && (e.keyCode < 96 || e.keyCode > 105)) {
+			e.preventDefault();
+		}
+	});
+});
+
+// Xử lý get thông tin suggest/word khi click button 実行
+$(document).ready(function(){
+	$("#btnSearch").click(function(){
+	var requestUrl = $("#request-uri").val();
+	if (requestUrl == "") {
+		$("#tableSuggestWord").html("");
+		return;
+	}
+
+  $.ajax({
+    url: requestUrl,
+    cache: false,
+    success: function (data) {
+			var obj = JSON.parse(data);
+			if (obj["status"]["code"] === '0000') {
+				loadSuggestWord(obj);
+			}
+    },
+    error: function () {
+    }
+  });
+	});
+});
+
+// Xử lý hiển thị thông tin suggest/word khi click button json実行
+$(document).ready(function(){
+	$("#btnSearchJson").click(function(){
+		var requestUrl = $("#request-uri").val();
+		if (requestUrl == "") {
+		$("#tableSuggestWord").html("");
+			return;
+		}
+
+		$.ajax({
+			url: requestUrl,
+			cache: false,
+			success: function (data) {
+				var jsonObj = JSON.parse(data);
+				if (jsonObj["status"]["code"] === '0000') {
+					var jsonPretty = JSON.stringify(jsonObj, null, '\t')
+					showDataJson(jsonPretty);
+				}
+			},
+			error: function () {
+			}
+		});
+	});
+});
+
+// show json data trong tab mới
+function showDataJson(json) {
+	var myTab = window.open("", "_blank");
+	myTab.document.write("<div style='overflow:auto'><pre>" + json + "</pre></div>");
+}
+
+// Hiển thị info chi tiết khi click item name
+function showInfoDetail(id, name) {
+  var displayHtml = '<p id="display-json">' + '"text":"' + name + '",<br>"code":"' + id + '"</p>';
+  $("#info").show();
+  $("#info").html(displayHtml);
+}
+
+// リクエストURLを設定する
+function settingRequestUrl() {
+	var requestUrl = createRequestUrl();
+	$("#request-uri").val(requestUrl);
+}
+
+function createHtmlRowHeader(title, count) {
+  return '<tr><th class="th">' + title + ": " + count + "件</th></tr>";
+}
+
+function createHtmlDataRow(id, name) {
+  var strHtml = "<tr>";
+  strHtml += "<td>";
+  strHtml += "<p onclick=\"showInfoDetail(\'" + id + "\',\'" + name + "\')\">" + name + "</p>"
+  strHtml += "</td>"
+  strHtml += "</tr>";
+  return strHtml;
+}
+
+// リクエストURLを作成する
+function createRequestUrl() {
+	var freeword = $("#freeword").val();
+	var genreCnt = $("#genre_cnt").val();
+	var genreSearchtype = $("#genre_searchtype").val();
+	var genreSort = $("#genre_sort").val();
+	var stationCnt = $("#station_cnt").val();
+	var stationSearchtype = $("#station_searchtype").val();
+	var stationSort = $("#station_sort").val();
+	var poiCnt = $("#poi_cnt").val();
+	var poiSearchtype = $("#poi_searchtype").val();
+	var poiSort = $("#poi_sort").val();
+	var requestUri = "";
+	
+	if (!freeword) {
+		return requestUri;
+	} else {
+		requestUri = BASE_URL + "word=" + freeword;
+	}
+	if (genreCnt) {
+		requestUri += "&genre_cnt=" + genreCnt; 
+	}
+	if (genreSearchtype) {
+		requestUri += "&genre_searchtype=" + genreSearchtype; 
+	}
+	if (genreSort) {
+		requestUri += "&genre_sort=" + genreSort; 
+	}
+	if (stationCnt) {
+		requestUri += "&station_cnt=" + stationCnt; 
+	}
+	if (stationSearchtype) {
+		requestUri += "&station_searchtype=" + stationSearchtype; 
+	}
+	if (stationSort) {
+		requestUri += "&station_sort=" + stationSort; 
+	}
+	if (poiCnt) {
+		requestUri += "&poi_cnt=" + poiCnt; 
+	}
+	if (poiSearchtype) {
+		requestUri += "&poi_searchtype=" + poiSearchtype; 
+	}
+	if (poiSort) {
+		requestUri += "&poi_sort=" + poiSort; 
+	}
+	return requestUri;
+}
+
+function loadSuggestWord(obj) {
+	var genreCnt = obj["genre"]["info"]["hit"];
+	var stationCnt = obj["station"]["info"]["hit"];
+	var poiCnt = obj["poi"]["info"]["hit"];
+	var dataRows ="";
+	
+	dataRows = createHtmlRowHeader("ジャンル", genreCnt);
+	if (genreCnt > 0) {
+		var genreList = obj["genre"]["item"];
+		for(var i in genreList) {
+			dataRows += createHtmlDataRow(genreList[i]["code"], genreList[i]["text"]);
+		}
+	}
+	
+	dataRows += createHtmlRowHeader("駅", stationCnt);
+	if (stationCnt > 0) {
+		var stationList = obj["station"]["item"];
+		for(var i in stationList) {
+			dataRows += createHtmlDataRow(stationList[i]["code"], stationList[i]["text"]);
+		}
+	}
+
+	dataRows += createHtmlRowHeader("施設", poiCnt);
+	if (poiCnt > 0) {
+		var poiList = obj["poi"]["item"];
+		for(var i in poiList) {
+			dataRows += createHtmlDataRow(poiList[i]["code"], poiList[i]["text"]);
+		}
+	}
+	$("#tableSuggestWord").html("<p class='none-display'>" + dataRows + "</p>");	
+}
+
+function getSuggestWord() {
+	var requestUrl = createRequestUrl();
+	if (requestUrl === "") {
+		$("#tableSuggestWord").html("");
+		return;
+	}
+  $.ajax({
+    url: requestUrl,
+    cache: false,
+    success: function (data) {
+			var obj = JSON.parse(data);
+			if (obj["status"]["code"] === '0000') {
+				loadSuggestWord(obj);
+			} else {
+				alert(obj["status"]["code"]);
+			}
+    },
+    error: function () {
+    }
+  });
+}
+
